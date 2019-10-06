@@ -8,7 +8,7 @@ public class ObjectPreviewer_script : MonoBehaviour
     private SpriteRenderer _spriteRendere;
     private bool _follow;
 
-    void Start()
+    void Awake()
     {
         _previewTransform = transform.GetChild(0);
         _spriteRendere = _previewTransform.GetComponent<SpriteRenderer>();

@@ -11,12 +11,15 @@ public class ObjectPlacerMananger_script : MonoBehaviour
     private UIManager_script _uiManager;
     public ObjectPreviewer_script ObjectPreviewer;
     private ScoreManager_script _scoreManager;
+    private GameController_script _gameController;
+    private EffectMananger_script _effectMananger;
 
     [Serializable]
     public class ObjectInfo
     {
         public string ObjectName;
         public int ObjectCount;
+        public int ObjectStartCount;
         public Button ObjectButton;
         public GameObject ObjectPrefab;
         public int ObjectCost;
@@ -26,12 +29,19 @@ public class ObjectPlacerMananger_script : MonoBehaviour
     private ObjectInfo _activeObject;
 
     private bool _removalTool;
+    private Transform _goal;
+    private List<GameObject> _placedObjects;
+    public AudioClip PlacementClip;
+    public AudioClip ButtonClip;
 
     void Start()
     {
         _uiManager = GetComponent<UIManager_script>();
         _scoreManager = GetComponent<ScoreManager_script>();
+        _gameController = GetComponent<GameController_script>();
+        _effectMananger = GetComponent<EffectMananger_script>();
         _uiManager.SetUpButtons(Objects);
+        _placedObjects = new List<GameObject>();
     }
 
     void Update()
@@ -54,10 +64,20 @@ public class ObjectPlacerMananger_script : MonoBehaviour
             Vector3 mousePos = Input.mousePosition;
             Vector2 worldPos = Camera.main.ScreenToWorldPoint(mousePos);
             GameObject go = Instantiate(_activeObject.ObjectPrefab, worldPos, Quaternion.identity, ObjectHolder);
-            _activeObject.ObjectCount--;
             go.transform.name = _activeObject.ObjectName;
+            if (_activeObject.ObjectName == "Spawn Point")
+            {
+                float dist = Vector2.Distance(go.transform.position, _goal.position);
+                _scoreManager.CalcBasScore(dist);
+                _activeObject.ObjectCount--;
+            }
+            else
+            {
+                _scoreManager.DecreaseScore(_activeObject.ObjectCost);
+            }
             _uiManager.UpdateObjectCount(_activeObject);
-            _scoreManager.DecreaseScore(_activeObject.ObjectCost);
+            _placedObjects.Add(go);
+            _effectMananger.PlayEffect(PlacementClip);
         }
         else
         {
@@ -67,7 +87,8 @@ public class ObjectPlacerMananger_script : MonoBehaviour
 
     public void SelectObject(int index)
     {
-        Debug.Log("Objects index: " + index);
+        Debug.Log("Object selected index: " + index);
+        _effectMananger.PlayEffect(ButtonClip);
         if (index == 99 || (_activeObject != null && _activeObject.ObjectName == Objects[index].ObjectName))
         {
             _uiManager.UpdateButtons();
@@ -98,9 +119,19 @@ public class ObjectPlacerMananger_script : MonoBehaviour
                 if (oi.ObjectName == go.transform.name)
                 {
                     Destroy(go);
-                    oi.ObjectCount++;
+                    if (oi.ObjectName == "Spawn Point")
+                    {
+                        float dist = Vector2.Distance(go.transform.position, _goal.position);
+                        _scoreManager.CalcBasScore(dist,false);
+                        oi.ObjectCount++;
+                    }
+                    else
+                    {
+                        _scoreManager.IncreaseScore(oi.ObjectCost);
+                    }
                     _uiManager.UpdateObjectCount(oi);
-                    _scoreManager.IncreaseScore(oi.ObjectCost);
+                    _placedObjects.Remove(go);
+                    _effectMananger.PlayEffect(PlacementClip);
                     return;
                 }
             }
@@ -111,5 +142,37 @@ public class ObjectPlacerMananger_script : MonoBehaviour
     {
         _removalTool = !_removalTool;
         return _removalTool;
+    }
+
+    public void RemoveAllObject()
+    {
+        foreach (GameObject go in _placedObjects)
+        {
+            if (go == null)
+            {
+                continue;
+            }
+            Destroy(go);
+        }
+
+        foreach (ObjectInfo oi in Objects)
+        {
+            oi.ObjectCount = oi.ObjectStartCount;
+            oi.ObjectButton.interactable = true;
+        }
+        _uiManager.UpdateButtons();
+        _placedObjects.Clear();
+        _activeObject = null;
+    }
+
+    public void SetGoal(Transform g)
+    {
+        _goal = g;
+    }
+
+    public void ClearSelectedObject()
+    {
+        _activeObject = null;
+        _uiManager.UpdateButtons();
     }
 }

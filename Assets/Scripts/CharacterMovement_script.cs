@@ -14,21 +14,31 @@ public class CharacterMovement_script : MonoBehaviour
     private bool _blockJump;
     private bool _doFall;
     private float _timer;
-    
+    private CharacterCollision_script _characterCollision;
+    private EffectMananger_script _effectMananger;
+    public AudioClip JumpClip;
+
+    void OnEnable()
+    {
+        _currentJumpForce = -GravityPower;
+    }
+
     void Start()
     {
         _rb = GetComponent<Rigidbody2D>();
+        _characterCollision = GetComponent<CharacterCollision_script>();
+        _effectMananger = _characterCollision._gameController.GetComponent<EffectMananger_script>();
         _currentMoveSpeed = MoveSpeed;
         _currentJumpForce = -GravityPower;
     }
     
     void FixedUpdate()
     {
-        Move();
-        if (Input.GetButtonDown("Sprint"))
+        //Move();
+        /*if (Input.GetButtonDown("Sprint"))
         {
             _currentMoveSpeed = RunSpeed;
-        }
+        }*/
         if (Input.GetButtonUp("Sprint") && !_blockJump)
         {
             _currentMoveSpeed = MoveSpeed;
@@ -38,6 +48,7 @@ public class CharacterMovement_script : MonoBehaviour
 
     void Update()
     {
+        Move();
         Jump();
     }
 
@@ -56,22 +67,24 @@ public class CharacterMovement_script : MonoBehaviour
         if (Input.GetButtonDown("Jump") && !_blockJump)
         {
             //Debug.Log("Do jump");
+            //_currentJumpForce = JumpPower;
             _currentJumpForce = JumpPower;
             _blockJump = true;
             _timer = 0.25f;
+            _effectMananger.PlayEffect(JumpClip);
             //_currentMoveSpeed *= 0.5f;
         }
         if (_timer > 0 && !_doFall)
         {
             //Debug.Log("Do Timer");
-            if (_currentJumpForce < JumpPower)
+            /*if (_currentJumpForce < JumpPower)
             {
                 _currentJumpForce += JumpPower * Time.deltaTime;
             }
             else
             {
                 _currentJumpForce = JumpPower;
-            }
+            }*/
             
             _timer -= Time.deltaTime;
         }
@@ -79,14 +92,15 @@ public class CharacterMovement_script : MonoBehaviour
         {
             //Debug.Log("Do Fall");
             //Debug.Log("Timer: " + _timer);
-            if (_currentJumpForce > -GravityPower)
+            /*if (_currentJumpForce > -GravityPower)
             {
                 _currentJumpForce -= GravityPower * Time.deltaTime;
             }
             else
             {
                 _currentJumpForce = -GravityPower;
-            }
+            }*/
+            _currentJumpForce -= GravityPower * Time.deltaTime;
             _doFall = true;
             _timer = 0;
         }
@@ -98,5 +112,16 @@ public class CharacterMovement_script : MonoBehaviour
         _doFall = false;
         _currentMoveSpeed = MoveSpeed;
         _currentJumpForce = 0;
+    }
+
+    public void NoGround()
+    {
+        if (!_blockJump)
+        {
+            Debug.Log("No Ground");
+            _doFall = true;
+            _blockJump = true;
+            _timer = 0;
+        }
     }
 }

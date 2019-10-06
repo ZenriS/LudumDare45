@@ -5,11 +5,15 @@ using UnityEngine;
 public class CharacterCollision_script : MonoBehaviour
 {
     private CharacterMovement_script _characterMovement;
-    private GameController_script _gameController;
+    [HideInInspector]public GameController_script _gameController;
+    private EffectMananger_script _effectMananger;
+    public AudioClip DeathClip;
+    public AudioClip WinClip;
 
     void Start()
     {
         _characterMovement = GetComponent<CharacterMovement_script>();
+        _effectMananger = _gameController.GetComponent<EffectMananger_script>();
     }
 
     public void Config(GameController_script gc)
@@ -21,17 +25,36 @@ public class CharacterCollision_script : MonoBehaviour
     {
         if (col.tag == "Ground")
         {
-            Debug.Log("Landed");
+            //Debug.Log("Landed");
             _characterMovement.Landed();
         }
         else if (col.tag == "Finish")
         {
-            Debug.Log("Finish");
+            //Debug.Log("Finish");
+            _effectMananger.PlayEffect(WinClip);
             _gameController.CheckGameOver(true);
         }
-        else if (col.tag == "Void")
+        else if (col.transform.tag == "Void")
         {
             _gameController.CheckGameOver(false);
+            _effectMananger.PlayEffect(DeathClip);
+        }
+    }
+
+    void OnTriggerExit2D(Collider2D col)
+    {
+        if (col.tag == "Ground")
+        {
+            _characterMovement.NoGround();
+        }
+    }
+
+    void OnCollisionEnter2D(Collision2D col)
+    {
+        if (col.transform.tag == "Void")
+        {
+            _gameController.CheckGameOver(false);
+            _effectMananger.PlayEffect(DeathClip);
         }
     }
 }

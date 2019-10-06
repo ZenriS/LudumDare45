@@ -19,8 +19,17 @@ public class UIManager_script : MonoBehaviour
     private TextMeshProUGUI _gameoverTitleText;
     private TextMeshProUGUI _gameoverText;
     private ScoreManager_script _scoreManager;
-
-    void Start()
+    private TextMeshProUGUI _placementScoreText;
+    private TextMeshProUGUI[] _levelScoreText;
+    private TextMeshProUGUI _levelScoreTotalText;
+    private EffectMananger_script _effectMananger;
+    public GameObject StartScreen;
+    private Toggle _musicToggle;
+    private Toggle _sfxToggle;
+    private TextMeshProUGUI[] _highScoreScreenText;
+    private TextMeshProUGUI _highScoreScreenTotalText;
+    
+    void Awake()
     {
         _objectPlacerMananger = GetComponent<ObjectPlacerMananger_script>();
         _objectPreviewer = _objectPlacerMananger.ObjectPreviewer;
@@ -31,7 +40,17 @@ public class UIManager_script : MonoBehaviour
         _gameoverTitleText = GameOverScreen.transform.GetChild(1).GetComponent<TextMeshProUGUI>();
         _gameoverText = GameOverScreen.transform.GetChild(2).GetComponent<TextMeshProUGUI>();
         _scoreManager = GetComponent<ScoreManager_script>();
+        _placementScoreText = ObjectUI.transform.GetChild(2).GetComponent<TextMeshProUGUI>();
+        _levelScoreText = GameOverScreen.transform.GetChild(3).GetComponentsInChildren<TextMeshProUGUI>();
+        _levelScoreTotalText = GameOverScreen.transform.GetChild(5).GetComponent<TextMeshProUGUI>();
+        _effectMananger = GetComponent<EffectMananger_script>();
         GameOverScreen.SetActive(false);
+        _musicToggle = StartScreen.transform.GetChild(1).GetChild(2).GetChild(0).GetComponent<Toggle>();
+        _sfxToggle = StartScreen.transform.GetChild(1).GetChild(2).GetChild(1).GetComponent<Toggle>();
+        _highScoreScreenText = StartScreen.transform.GetChild(2).GetChild(1).GetComponentsInChildren<TextMeshProUGUI>();
+        _highScoreScreenTotalText = StartScreen.transform.GetChild(2).GetChild(2).GetComponent<TextMeshProUGUI>();
+        StartScreen.SetActive(true);
+        SetHighScoreScreenText();
     }
 
     public void SetUpButtons(ObjectPlacerMananger_script.ObjectInfo[] objects)
@@ -45,7 +64,12 @@ public class UIManager_script : MonoBehaviour
                 int index = oi.ObjectButton.transform.GetSiblingIndex();
                 oi.ObjectButton.onClick.AddListener(() => _objectPlacerMananger.SelectObject(index));
                 TextMeshProUGUI t = oi.ObjectButton.GetComponentInChildren<TextMeshProUGUI>();
-                t.text = oi.ObjectName + "\n" + oi.ObjectCount;
+                //t.text = oi.ObjectName + "\n" + oi.ObjectCount;
+                t.text = oi.ObjectName;
+                if (oi.ObjectCost > 0)
+                {
+                    t.text += "\nCost: " + oi.ObjectCost;
+                }
                 Image i = oi.ObjectButton.GetComponent<Image>();
                 _buttonImages.Add(i);
             }
@@ -60,24 +84,27 @@ public class UIManager_script : MonoBehaviour
         UpdateButtons();
     }
 
-    public void UpdateObjectCount(ObjectPlacerMananger_script.ObjectInfo info)
+    public void UpdateObjectCount(ObjectPlacerMananger_script.ObjectInfo oi)
     {
-        TextMeshProUGUI t = info.ObjectButton.GetComponentInChildren<TextMeshProUGUI>();
-        t.text = info.ObjectName + "\n" + info.ObjectCount;
-        if (info.ObjectCount <= 0)
+        TextMeshProUGUI t = oi.ObjectButton.GetComponentInChildren<TextMeshProUGUI>();
+        //t.text = info.ObjectName + "\n" + info.ObjectCount;
+        t.text = oi.ObjectName + "\nCost: " +oi.ObjectCost;
+        if (oi.ObjectCount <= 0)
         {
-            info.ObjectButton.interactable = false;
+            oi.ObjectButton.interactable = false;
             _objectPreviewer.ClearPreview();
-            if (info.ObjectName == "Spawn Point")
+            if (oi.ObjectName == "Spawn Point")
             {
+                t.text = oi.ObjectName;
                 _startButton.interactable = true;
             }
         }
         else
         {
-            info.ObjectButton.interactable = true;
-            if (info.ObjectName == "Spawn Point")
+            oi.ObjectButton.interactable = true;
+            if (oi.ObjectName == "Spawn Point")
             {
+                t.text = oi.ObjectName;
                 _startButton.interactable = false;
             }
         }
@@ -116,18 +143,76 @@ public class UIManager_script : MonoBehaviour
         }
     }
 
-    public void GameOverIU(bool b)
+    public void LevelOverUI(bool b, int level)
     {
         if (b)
         {
             _gameoverTitleText.text = "Level Complete";
-            _gameoverText.text = "Score: " +_scoreManager.GetScore();
+            _gameoverText.text = "Score: " + _scoreManager.GetScore();
+            if (_scoreManager.CheckHighScore(level))
+            {
+                _gameoverText.text += "\n New High Score";
+            }
+
+            _startButton.interactable = false;
+        }
+        GameOverScreen.SetActive(b);
+    }
+
+    public void GameCompleteUI()
+    {
+        _gameoverTitleText.text = "Level Complete";
+        _scoreManager.GetFinalScores(out List<int> levelScores,out int total, out int highScore);
+        _gameoverText.text = "Level Scores";
+        for (int i = 0; i < levelScores.Count; i++)
+        {
+            _levelScoreText[i].text = "Level 0" + i + ": " + levelScores[i];
+        }
+        string s = "Total Score: " + total;
+        if (total > highScore)
+        {
+            s += "\nNew High Score";
         }
         else
         {
-            _gameoverTitleText.text = "Game Over";
-            _gameoverText.text = "";
+            s += "\nHigh Score " + highScore;
         }
-        GameOverScreen.SetActive(true);
+        _levelScoreTotalText.text = s;
+    }
+
+    public void UpdateScoreUI(int a)
+    {
+        string s = "Score\n" + a +"\nHigh Score: \n" +_scoreManager.GetLevelHighScore();
+        _placementScoreText.text = s;
+    }
+
+    public void ToggleSFX()
+    {
+        bool b = _sfxToggle.isOn;
+        _effectMananger.ToggleSfxVolume(b);
+    }
+
+    public void ToggleMusic()
+    {
+        bool b = _musicToggle.isOn;
+        _effectMananger.ToggleMusicVolume(b);
+    }
+
+    public void SetToggles(bool s, bool m)
+    {
+        _sfxToggle.isOn = s;
+        _musicToggle.isOn = m;
+    }
+
+    public void SetHighScoreScreenText()
+    {
+        for (int i = 0; i < _highScoreScreenText.Length; i++)
+        {
+            string s = "level:" + i;
+            int hs = PlayerPrefs.GetInt(s);
+            _highScoreScreenText[i].text = "Level 0" + i + ": " + hs;
+        }
+
+        _highScoreScreenTotalText.text = "Run high score\n" + PlayerPrefs.GetInt("FinalHS");
     }
 }
